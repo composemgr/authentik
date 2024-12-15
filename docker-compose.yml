@@ -1,0 +1,117 @@
+name: authentik
+services:
+  server:
+    image: 'ghcr.io/goauthentik/server:latest'
+    container_name: authentik-server
+    hostname: ${HOSTNAME:-auth}
+    restart: always
+    command: server
+    environment:
+      - AUTHENTIK_BOOTSTRAP_EMAIL="administrator@${BASE_DOMAIN_NAME:-authentik.local}"
+      - AUTHENTIK_BOOTSTRAP_PASSWORD="${APP_ADMIN_PASS:-SBoFZ5jaMPf2ncVD4o425x8MbQS5zQzQ}"
+      - AUTHENTIK_BOOTSTRAP_TOKEN="${APP_API_TOKEN:-5tHmfk9hmYhH2r0LpnLIQyPrG1zS90m2gghTopFF55s=}"
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-db
+      - AUTHENTIK_POSTGRESQL__USER=postgres
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${DB_ADMIN_PASS:-ZStaZrbT23a0TONiYQELiBErx2ZSV_B0}
+      - AUTHENTIK_SECRET_KEY=${APP_SECRET_KEY:-cC3JPCcwnj+MlCinOhnL6BszRT9IFYsLrDW+Z5ylhkM=}
+      - AUTHENTIK_EMAIL__HOST=${EMAIL_SERVER_HOST:-172.17.0.1}
+      - AUTHENTIK_EMAIL__PORT=${EMAIL_SERVER_PORT:-25}
+      - AUTHENTIK_EMAIL__USE_TLS=${EMAIL_SERVER_USE_TLS:-true}
+      - AUTHENTIK_EMAIL__USE_SSL=${EMAIL_SERVER_USE_SSL:-false}
+      - AUTHENTIK_EMAIL__TIMEOUT=${EMAIL_SERVER_TIMEOUT:-10}
+      - AUTHENTIK_EMAIL__FROM=${EMAIL_SERVER_FROM_NAME:-Authentik}
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=${AUTHENTIK_ERROR_REPORTING:-true}
+    ports:
+      - '172.17.0.1:62000:9000'
+      - '172.17.0.1:62001:9443'
+    volumes:
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/data/authentik/media:/media
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/data/authentik/templates:/templates
+    extra_hosts:
+      - 'localhost:172.17.0.1'
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - authentik
+
+  worker:
+    image: 'ghcr.io/goauthentik/server:latest'
+    container_name: authentik-worker
+    hostname: authentik-worker
+    restart: always
+    command: worker
+    user: root
+    environment:
+      - AUTHENTIK_REDIS__HOST=authentik-redis
+      - AUTHENTIK_POSTGRESQL__HOST=authentik-db
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+      - AUTHENTIK_POSTGRESQL__USER=postgres
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${DB_ADMIN_PASS:-ZStaZrbT23a0TONiYQELiBErx2ZSV_B0}
+      - AUTHENTIK_SECRET_KEY=${APP_SECRET_KEY:-cC3JPCcwnj+MlCinOhnL6BszRT9IFYsLrDW+Z5ylhkM=}
+      - AUTHENTIK_EMAIL__HOST=${EMAIL_SERVER_HOST:-172.17.0.1}
+      - AUTHENTIK_EMAIL__PORT=${EMAIL_SERVER_PORT:-25}
+      - AUTHENTIK_EMAIL__USE_TLS=${EMAIL_SERVER_USE_TLS:-true}
+      - AUTHENTIK_EMAIL__USE_SSL=${EMAIL_SERVER_USE_SSL:-false}
+      - AUTHENTIK_EMAIL__TIMEOUT=${EMAIL_SERVER_TIMEOUT:-10}
+      - AUTHENTIK_EMAIL__FROM=${EMAIL_SERVER_FROM_NAME:-Authentik}
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=${AUTHENTIK_ERROR_REPORTING:-true}
+    volumes:
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/config/certs:/certs
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/data/authentik/media:/media
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/data/authentik/templates:/templates
+    extra_hosts:
+      - 'localhost:172.17.0.1'
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - authentik
+
+  postgres:
+    image: 'docker.io/library/postgres:16-alpine'
+    container_name: authentik-db
+    hostname: authentik-db
+    restart: always
+    environment:
+      - POSTGRES_DB=authentik
+      - DB_ADMIN_PASS=${DB_ADMIN_PASS:-ZStaZrbT23a0TONiYQELiBErx2ZSV_B0}
+      - DB_ADMIN_NAME=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - TZ=${TZ:-America/New_York}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "postgres"']
+      start_period: 30s
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/data/db/postgres:/var/lib/postgresql/data
+    networks:
+      - authentik
+
+  redis:
+    image: 'docker.io/library/redis:alpine'
+    container_name: authentik-redis
+    hostname: authentik-redis
+    restart: always
+    command: --save 60 1 --loglevel warning
+    volumes:
+      - /var/lib/srv/$USER/docker/authentik/server/latest/rootfs/data/db/redis:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
+    networks:
+      - authentik
+
+networks:
+  authentik:
+    name: authentik
+    external: false
