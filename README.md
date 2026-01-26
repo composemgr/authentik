@@ -1,39 +1,38 @@
 ## 👋 Welcome to authentik 🚀
 
-Authentik - Open-source Identity Provider (SSO, SAML, OAuth2, LDAP)
+Open-source Identity Provider with SSO, SAML, OAuth2, and LDAP support
 
 ## 📋 Description
 
-Authentik is an open-source Identity Provider focused on flexibility and versatility. Supports SAML, OAuth2/OIDC, LDAP, SCIM, and more. Perfect for implementing SSO across your infrastructure.
+Open-source Identity Provider with SSO, SAML, OAuth2, and LDAP support
 
 ## 🚀 Services
 
-- **server**: Authentik server (`ghcr.io/goauthentik/server:latest`)
-- **worker**: Background task worker
-- **redis**: Cache and message broker
-- **db**: PostgreSQL database
+- **server**: ghcr.io/goauthentik/server:latest
+- **worker**: ghcr.io/goauthentik/server:latest
 
 ### Infrastructure Components
 
-- **Database**: PostgreSQL for persistent storage
-- **Cache/Queue**: Redis for caching and background jobs
+- **redis**: Redis database
+- **db**: Postgres database
+
 
 ## 📦 Installation
 
-### Using curl
-```shell
-curl -q -LSsf "https://raw.githubusercontent.com/composemgr/authentik/main/docker-compose.yaml" | docker compose -f - up -d
+### Option 1: Quick Install
+```bash
+curl -q -LSsf "https://raw.githubusercontent.com/composemgr/authentik/main/docker-compose.yaml" -o compose.yml
 ```
 
-### Using git
-```shell
+### Option 2: Git Clone
+```bash
 git clone "https://github.com/composemgr/authentik" ~/.local/srv/docker/authentik
 cd ~/.local/srv/docker/authentik
 docker compose up -d
 ```
 
-### Using composemgr
-```shell
+### Option 3: Using composemgr
+```bash
 composemgr install authentik
 ```
 
@@ -42,70 +41,70 @@ composemgr install authentik
 ### Environment Variables
 
 ```shell
-# Core Settings
-TZ=America/New_York
-BASE_HOST_NAME=${HOSTNAME}
-
-# Database
-DB_ADMIN_PASS=changeme_admin_password
-
-# Application
-APP_SECRET_KEY=changeme_secret_key
-APP_TEMP_PASS=changeme_bootstrap_password
-
-# Email
+DB_ADMIN_PASS=ZStaZrbT23a0TONiYQELiBErx2ZSV_B0
+APP_SECRET_KEY=cC3JPCcwnj+MlCinOhnL6BszRT9IFYsLrDW+Z5ylhkM=
+EMAIL_SERVER_PORT=25
 EMAIL_SERVER_HOST=172.17.0.1
-EMAIL_SERVER_PORT=587
-EMAIL_SERVER_MAIL_FROM=no-reply@${BASE_DOMAIN_NAME}
+EMAIL_SERVER_USE_TLS=true
+EMAIL_SERVER_USE_SSL=false
+EMAIL_SERVER_TIMEOUT=10
+EMAIL_SERVER_FROM_NAME=no-reply@${BASE_HOST_NAME:-$HOSTNAME
+AUTHENTIK_ERROR_REPORTING=true
+APP_TEMP_PASS=lkdfjdlkjaflkjadlgknvczmbnvnoi4e
+# ... see docker-compose.yaml for more
 ```
+
+See `docker-compose.yaml` for complete list of configurable options.
 
 ## 🌐 Access
 
 - **Web Interface**: http://172.17.0.1:62000
-- **LDAP**: ldap://172.17.0.1:3389
-- **LDAPS**: ldaps://172.17.0.1:6636
-- **Bootstrap Email**: administrator@${BASE_DOMAIN_NAME}
-- **Bootstrap Password**: Use APP_TEMP_PASS value
 
 ## 📂 Volumes
 
-- `./rootfs/data/authentik/media` - Uploaded media files
-- `./rootfs/data/authentik/templates` - Custom templates
-- `./rootfs/db/postgres/authentik` - PostgreSQL data
-- `./rootfs/db/redis/authentik` - Redis data
+- `./rootfs/data/authentik/media` - Data storage
+- `./rootfs/data/authentik/templates` - Data storage
+- `./rootfs/config/worker/certs` - Data storage
+- `./rootfs/data/db/redis/authentik` - Data storage
+- `./rootfs/data/db/postgres/authentik` - Data storage
 
 ## 🔐 Security
 
-- Change bootstrap password immediately after first login
-- Generate strong APP_SECRET_KEY
-- Configure 2FA/MFA for admin accounts
-- Use HTTPS in production (reverse proxy)
-- Rotate secrets regularly
+- Change all default passwords before deploying to production
+- Use strong secrets for all authentication tokens
+- Configure HTTPS using a reverse proxy (nginx, traefik, caddy)
+- Regularly update Docker images for security patches
+- Backup your data regularly
 
 ## 🔍 Logging
 
 ```shell
 docker compose logs -f server
-docker compose logs -f worker
 ```
 
 ## 🛠️ Management
 
-```shell
+```bash
+# Start services
 docker compose up -d
+
+# Stop services
 docker compose down
+
+# Update to latest images
 docker compose pull && docker compose up -d
 
-# Create superuser
-docker compose exec server ak create_admin_group
+# View logs
+docker compose logs -f
+
+# Restart services
+docker compose restart
 ```
 
 ## 📋 Requirements
 
 - Docker Engine 20.10+
 - Docker Compose V2+
-- Reverse proxy with HTTPS for production
-- Valid domain name for OAuth/SAML
 
 ## 🤝 Author
 
