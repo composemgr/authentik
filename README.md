@@ -62,11 +62,11 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/authentik/media` - Data storage
-- `./rootfs/data/authentik/templates` - Data storage
-- `./rootfs/config/worker/certs` - Data storage
-- `./rootfs/data/db/redis/authentik` - Data storage
-- `./rootfs/data/db/postgres/authentik` - Data storage
+- `./volumes/data/authentik/media` - Data storage
+- `./volumes/data/authentik/templates` - Data storage
+- `./volumes/config/worker/certs` - Data storage
+- `./volumes/data/db/redis/authentik` - Data storage
+- `./volumes/data/db/postgres/authentik` - Data storage
 
 ## 🔐 Security
 
