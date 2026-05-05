@@ -42,8 +42,8 @@ services:
       - '6636:6636'
       - '172.17.0.1:62000:9000'
     volumes:
-      - './rootfs/data/authentik/media:/media'
-      - './rootfs/data/authentik/templates:/templates'
+      - './volumes/data/authentik/media:/media'
+      - './volumes/data/authentik/templates:/templates'
     depends_on:
       redis:
         condition: service_healthy
@@ -77,9 +77,9 @@ services:
       AUTHENTIK_EMAIL__FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@${BASE_DOMAIN_NAME:-${BASE_HOST_NAME}}}
       AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-true}
     volumes:
-      - './rootfs/config/worker/certs:/certs'
-      - './rootfs/data/authentik/media:/media'
-      - './rootfs/data/authentik/templates:/templates'
+      - './volumes/config/worker/certs:/certs'
+      - './volumes/data/authentik/media:/media'
+      - './volumes/data/authentik/templates:/templates'
     depends_on:
       redis:
         condition: service_healthy
@@ -99,7 +99,7 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
     volumes:
-      - './rootfs/data/db/redis/authentik:/data'
+      - './volumes/data/db/redis/authentik:/data'
     healthcheck:
       test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
       start_period: 20s
@@ -123,7 +123,7 @@ services:
       DB_ADMIN_NAME: postgres
       DB_ADMIN_PASS: ${DB_ADMIN_PASS:-ZStaZrbT23a0TONiYQELiBErx2ZSV_B0}
     volumes:
-      - './rootfs/data/db/postgres/authentik:/var/lib/postgresql/data'
+      - './volumes/data/db/postgres/authentik:/var/lib/postgresql/data'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U "postgres"']
       start_period: 30s
