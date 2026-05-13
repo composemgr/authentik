@@ -18,6 +18,8 @@ services:
     command: server
     logging: *default-logging
     environment:
+      CONTAINER_NAME: authentik-server
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
       AUTHENTIK_DISABLE_UPDATE_CHECK: true
       AUTHENTIK_REDIS__HOST: authentik-redis
       AUTHENTIK_POSTGRESQL__USER: postgres
@@ -49,8 +51,26 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://authentik-server:9000'
+      - 'cloudflare.hostname=authentik.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.authentik-server.entrypoints=http'
+      - 'traefik.http.routers.authentik-server-secure.tls=true'
+      - 'traefik.http.routers.authentik-server.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.authentik-server-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.authentik-server.middlewares=authentik-server-https-redirect'
+      - 'traefik.http.routers.authentik-server-secure.entrypoints=https'
+      - 'traefik.http.routers.authentik-server-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.authentik-server-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.authentik-server-secure.service=authentik-server'
+      - 'traefik.http.services.authentik-server.loadbalancer.server.port=9000'
     networks:
       - authentik
+      - proxy
+      - cloudflare
 
   worker:
     image: ghcr.io/goauthentik/server:latest
@@ -62,6 +82,7 @@ services:
     user: root
     logging: *default-logging
     environment:
+      CONTAINER_NAME: authentik-worker
       AUTHENTIK_DISABLE_UPDATE_CHECK: true
       AUTHENTIK_REDIS__HOST: authentik-redis
       AUTHENTIK_POSTGRESQL__HOST: authentik-db
@@ -98,6 +119,7 @@ services:
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: authentik-redis
     volumes:
       - './volumes/data/db/redis/authentik:/data'
     healthcheck:
@@ -118,6 +140,7 @@ services:
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: authentik-db
       POSTGRES_DB: authentik
       POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_USER: postgres
@@ -137,3 +160,7 @@ networks:
   authentik:
     name: authentik
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
