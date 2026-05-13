@@ -22,18 +22,20 @@ services:
       HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
       AUTHENTIK_DISABLE_UPDATE_CHECK: true
       AUTHENTIK_REDIS__HOST: authentik-redis
-      AUTHENTIK_POSTGRESQL__USER: postgres
-      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: ${DB_USER_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${DB_CREATE_DATABASE_NAME:-authentik}
       AUTHENTIK_POSTGRESQL__HOST: authentik-db
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${DB_USER_PASS:-changeme_db_password}
       AUTHENTIK_SECRET_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       AUTHENTIK_EMAIL__PORT: ${EMAIL_SERVER_PORT:-587}
       AUTHENTIK_EMAIL__HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      AUTHENTIK_EMAIL__USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
+      AUTHENTIK_EMAIL__PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
       AUTHENTIK_EMAIL__USE_TLS: ${EMAIL_SERVER_USE_TLS:-true}
       AUTHENTIK_EMAIL__USE_SSL: ${EMAIL_SERVER_USE_SSL:-false}
       AUTHENTIK_EMAIL__TIMEOUT: ${EMAIL_SERVER_TIMEOUT:-10}
       AUTHENTIK_EMAIL__FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@${BASE_DOMAIN_NAME:-example.com}}
-      AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-true}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-false}
       AUTHENTIK_BOOTSTRAP_EMAIL: administrator@${BASE_DOMAIN_NAME:-${BASE_HOST_NAME}}
       AUTHENTIK_BOOTSTRAP_PASSWORD: ${APP_ADMIN_PASS:-changeme_admin_password}
       AUTHENTIK_BOOTSTRAP_TOKEN: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
@@ -86,17 +88,19 @@ services:
       AUTHENTIK_DISABLE_UPDATE_CHECK: true
       AUTHENTIK_REDIS__HOST: authentik-redis
       AUTHENTIK_POSTGRESQL__HOST: authentik-db
-      AUTHENTIK_POSTGRESQL__USER: postgres
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      AUTHENTIK_POSTGRESQL__USER: ${DB_USER_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${DB_CREATE_DATABASE_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${DB_USER_PASS:-changeme_db_password}
       AUTHENTIK_SECRET_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       AUTHENTIK_EMAIL__PORT: ${EMAIL_SERVER_PORT:-587}
       AUTHENTIK_EMAIL__HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      AUTHENTIK_EMAIL__USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
+      AUTHENTIK_EMAIL__PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
       AUTHENTIK_EMAIL__USE_TLS: ${EMAIL_SERVER_USE_TLS:-true}
       AUTHENTIK_EMAIL__USE_SSL: ${EMAIL_SERVER_USE_SSL:-false}
       AUTHENTIK_EMAIL__TIMEOUT: ${EMAIL_SERVER_TIMEOUT:-10}
       AUTHENTIK_EMAIL__FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@${BASE_DOMAIN_NAME:-${BASE_HOST_NAME}}}
-      AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-true}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-false}
     volumes:
       - './volumes/config/worker/certs:/certs'
       - './volumes/data/authentik/media:/media'
@@ -141,14 +145,13 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
       CONTAINER_NAME: authentik-db
-      POSTGRES_DB: authentik
-      POSTGRES_HOST_AUTH_METHOD: trust
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-authentik}
+      POSTGRES_USER: ${DB_USER_NAME:-authentik}
+      POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
     volumes:
       - './volumes/data/db/postgres/authentik:/var/lib/postgresql/data'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U "postgres"']
+      test: ['CMD-SHELL', 'pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}']
       start_period: 30s
       interval: 10s
       timeout: 10s
