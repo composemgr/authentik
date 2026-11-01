@@ -4,18 +4,22 @@ Open-source Identity Provider with SSO, SAML, OAuth2, and LDAP support
 
 ## 📋 Description
 
-Open-source Identity Provider with SSO, SAML, OAuth2, and LDAP support
+authentik is an open-source identity provider that supports single sign-on
+through SAML, OAuth2, OpenID Connect, and LDAP. The web interface runs on
+native port `9000` (HTTP) with `9443` (HTTPS) available inside the network.
+
+The upstream project publishes version-tagged images only — there is no
+`:latest` tag — so the compose files pin the current release, `2026.8.3`.
 
 ## 🚀 Services
 
-- **server**: ghcr.io/goauthentik/server:latest
-- **worker**: ghcr.io/goauthentik/server:latest
+- **app**: ghcr.io/goauthentik/server:2026.8.3
+- **worker**: ghcr.io/goauthentik/server:2026.8.3
 
 ### Infrastructure Components
 
-- **redis**: Redis database
-- **db**: Postgres database
-
+- **db**: postgres:16-alpine - Postgres database
+- **redis**: redis:alpine - Redis cache and queue
 
 ## 📦 Installation
 
@@ -28,7 +32,8 @@ curl -q -LSsf "https://raw.githubusercontent.com/composemgr/authentik/main/docke
 ```bash
 git clone "https://github.com/composemgr/authentik" ~/.local/srv/docker/authentik
 cd ~/.local/srv/docker/authentik
-docker compose up -d
+cp default.env .env
+docker compose --env-file .env up -d
 ```
 
 ### Option 3: Using composemgr
@@ -41,32 +46,70 @@ composemgr install authentik
 ### Environment Variables
 
 ```shell
-DB_ADMIN_PASS=ZStaZrbT23a0TONiYQELiBErx2ZSV_B0
-APP_SECRET_KEY=cC3JPCcwnj+MlCinOhnL6BszRT9IFYsLrDW+Z5ylhkM=
-EMAIL_SERVER_PORT=25
+TZ=America/New_York
+DB_USER_NAME=authentik
+DB_USER_PASS=replace-with-a-random-password
+APP_ADMIN_USER=administrator
+APP_ADMIN_PASS=replace-with-a-random-password
+APP_SECRET_KEY=replace-with-a-random-32-byte-hex-string
+AUTHENTIK_ERROR_REPORTING=false
 EMAIL_SERVER_HOST=172.17.0.1
+EMAIL_SERVER_PORT=587
 EMAIL_SERVER_USE_TLS=true
 EMAIL_SERVER_USE_SSL=false
-EMAIL_SERVER_TIMEOUT=10
-EMAIL_SERVER_FROM_NAME=no-reply@${BASE_HOST_NAME:-$HOSTNAME
-AUTHENTIK_ERROR_REPORTING=true
-APP_TEMP_PASS=lkdfjdlkjaflkjadlgknvczmbnvnoi4e
-# ... see docker-compose.yaml for more
 ```
 
 See `docker-compose.yaml` for complete list of configurable options.
 
+### Environment Files
+
+`default.env.sample` holds the full set of variables and is copied to `.env`
+before starting the stack:
+
+```bash
+cp default.env .env
+docker compose --env-file .env up -d
+```
+
+`app.env.sample` holds the app-specific overrides and is copied to `app.env`:
+
+```bash
+cp app.env.sample app.env
+```
+
+`composemgr up` applies `app.env` and `default.env` automatically. Raw
+`docker compose` commands need `--env-file .env` to pick up the same values.
+
+The bootstrap administrator is created from `APP_ADMIN_USER` and
+`APP_ADMIN_PASS` on the first start only. Change them before first run, and
+never reuse a real `APP_SECRET_KEY` across installations — losing it means
+losing encrypted configuration.
+
+### Reverse Proxy
+
+Three standalone compose files ship in this repo:
+
+| File | Use |
+|------|-----|
+| `docker-compose.yaml` | Default, published on `172.17.0.1:64115` |
+| `docker-compose.traefik.yaml` | Behind an existing external `traefik` network |
+| `docker-compose.tunnel.yaml` | Behind an existing external `cloudflare` tunnel network |
+
+```bash
+docker compose -f docker-compose.traefik.yaml --env-file .env up -d
+```
+
 ## 🌐 Access
 
-- **Web Interface**: http://172.17.0.1:62000
+- **Web Interface**: http://172.17.0.1:64115
 
 ## 📂 Volumes
 
-- `./volumes/data/authentik/media` - Data storage
-- `./volumes/data/authentik/templates` - Data storage
-- `./volumes/config/worker/certs` - Data storage
-- `./volumes/data/db/redis/authentik` - Data storage
-- `./volumes/data/db/postgres/authentik` - Data storage
+- `./volumes/data/authentik/media` - User media
+- `./volumes/data/authentik/templates` - Branding templates
+- `./volumes/config/worker/certs` - Outpost certificates
+- `./volumes/db/postgres/authentik` - Database data
+- `./volumes/cache/redis/authentik` - Redis data
 
 ## 🔐 Security
 
@@ -79,26 +122,26 @@ See `docker-compose.yaml` for complete list of configurable options.
 ## 🔍 Logging
 
 ```shell
-docker compose logs -f server
+docker compose --env-file .env logs -f app
 ```
 
 ## 🛠️ Management
 
 ```bash
 # Start services
-docker compose up -d
+docker compose --env-file .env up -d
 
 # Stop services
-docker compose down
+docker compose --env-file .env down
 
 # Update to latest images
-docker compose pull && docker compose up -d
+docker compose --env-file .env pull && docker compose --env-file .env up -d
 
 # View logs
-docker compose logs -f
+docker compose --env-file .env logs -f
 
 # Restart services
-docker compose restart
+docker compose --env-file .env restart
 ```
 
 ## 📋 Requirements

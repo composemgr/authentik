@@ -1,0 +1,167 @@
+name: authentik
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: ghcr.io/goauthentik/server:2026.8.3
+    container_name: authentik-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    command: server
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: authentik-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+      AUTHENTIK_DISABLE_UPDATE_CHECK: 'true'
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-db
+      AUTHENTIK_POSTGRESQL__USER: ${DB_USER_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${DB_CREATE_DATABASE_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+      AUTHENTIK_SECRET_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      AUTHENTIK_EMAIL__PORT: ${EMAIL_SERVER_PORT:-587}
+      AUTHENTIK_EMAIL__HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      AUTHENTIK_EMAIL__USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
+      AUTHENTIK_EMAIL__PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
+      AUTHENTIK_EMAIL__USE_TLS: ${EMAIL_SERVER_USE_TLS:-true}
+      AUTHENTIK_EMAIL__USE_SSL: ${EMAIL_SERVER_USE_SSL:-false}
+      AUTHENTIK_EMAIL__TIMEOUT: ${EMAIL_SERVER_TIMEOUT:-10}
+      AUTHENTIK_EMAIL__FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@${BASE_DOMAIN_NAME:-example.com}}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-false}
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${APP_ADMIN_USER:-administrator}@${BASE_DOMAIN_NAME:-example.com}
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${APP_ADMIN_PASS:-replace-with-a-random-password}
+      AUTHENTIK_BOOTSTRAP_TOKEN: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+    expose:
+      - '9443'
+    volumes:
+      - './volumes/data/authentik/media:/media'
+      - './volumes/data/authentik/templates:/templates'
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:9000/-/health/live/ || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.authentik-app.entrypoints=http'
+      - 'traefik.http.routers.authentik-app.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`)'
+      - 'traefik.http.routers.authentik-app.middlewares=authentik-app-https-redirect'
+      - 'traefik.http.middlewares.authentik-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.authentik-app-secure.entrypoints=https'
+      - 'traefik.http.routers.authentik-app-secure.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`)'
+      - 'traefik.http.routers.authentik-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.authentik-app-secure.service=authentik-app'
+      - 'traefik.http.services.authentik-app.loadbalancer.server.port=9000'
+    networks:
+      - authentik
+      - traefik
+
+  worker:
+    image: ghcr.io/goauthentik/server:2026.8.3
+    container_name: authentik-worker
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: authentik-worker
+    restart: always
+    pull_policy: always
+    command: worker
+    user: root
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: authentik-worker
+      AUTHENTIK_DISABLE_UPDATE_CHECK: 'true'
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-db
+      AUTHENTIK_POSTGRESQL__USER: ${DB_USER_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${DB_CREATE_DATABASE_NAME:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+      AUTHENTIK_SECRET_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      AUTHENTIK_EMAIL__PORT: ${EMAIL_SERVER_PORT:-587}
+      AUTHENTIK_EMAIL__HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      AUTHENTIK_EMAIL__USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
+      AUTHENTIK_EMAIL__PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
+      AUTHENTIK_EMAIL__USE_TLS: ${EMAIL_SERVER_USE_TLS:-true}
+      AUTHENTIK_EMAIL__USE_SSL: ${EMAIL_SERVER_USE_SSL:-false}
+      AUTHENTIK_EMAIL__TIMEOUT: ${EMAIL_SERVER_TIMEOUT:-10}
+      AUTHENTIK_EMAIL__FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@${BASE_DOMAIN_NAME:-example.com}}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-false}
+    volumes:
+      - './volumes/config/worker/certs:/certs'
+      - './volumes/data/authentik/media:/media'
+      - './volumes/data/authentik/templates:/templates'
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - authentik
+
+  redis:
+    image: redis:alpine
+    container_name: authentik-redis
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: authentik-redis
+    restart: always
+    pull_policy: always
+    command: --save 60 1 --loglevel warning
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: authentik-redis
+    volumes:
+      - './volumes/cache/redis/authentik:/data'
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    networks:
+      - authentik
+
+  db:
+    image: postgres:16-alpine
+    container_name: authentik-db
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: authentik-db
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: authentik-db
+      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-authentik}
+      POSTGRES_USER: ${DB_USER_NAME:-authentik}
+      POSTGRES_PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+    volumes:
+      - './volumes/db/postgres/authentik:/var/lib/postgresql/data:z'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - authentik
+
+networks:
+  authentik:
+    name: authentik
+    external: false
+  traefik:
+    external: true
