@@ -90,6 +90,12 @@ services:
       AUTHENTIK_EMAIL__TIMEOUT: ${EMAIL_SERVER_TIMEOUT:-10}
       AUTHENTIK_EMAIL__FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@${BASE_DOMAIN_NAME:-example.com}}
       AUTHENTIK_ERROR_REPORTING__ENABLED: ${AUTHENTIK_ERROR_REPORTING:-false}
+    healthcheck:
+      test: ['CMD', 'ak', 'healthcheck']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - './volumes/config/worker/certs:/certs'
       - './volumes/data/authentik/media:/media'
